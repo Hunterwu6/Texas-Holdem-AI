@@ -41,12 +41,34 @@ Texas Hold'em AI Battle Simulator is a comprehensive poker platform that combine
 
 **Key Highlights:**
 - 🎮 Full No-Limit Texas Hold'em implementation
-- 🤖 Multiple AI strategies (rule-based + LLM-powered)
-- 🎨 Beautiful, responsive poker table UI
+- 🤖 Multiple AI strategies (rule-based + LLM-powered) with full customization
+- 🎨 Beautiful, responsive poker table UI with auto-advance spectating
 - 🚀 One-click start for Windows
-- 📊 Real-time game state updates
+- 📊 Real-time game state updates with complete hand tracking
 - 🔌 RESTful API with WebSocket support
 - 🧪 Comprehensive test coverage
+- ⚡ Smart betting logic following Texas Hold'em rules
+- 🎭 Custom AI personalities with individual names and prompts
+
+## 🆕 Latest Features (v2.0)
+
+### AI Customization
+- **Custom AI Names**: Give each AI opponent a unique nickname (e.g., "Phil Ivey Bot", "The Shark")
+- **Individual Strategies**: Mix and match different AI strategies at the same table
+- **Personality Prompts**: Define custom playing styles for LLM-powered AIs
+- **Strategy Display**: See each AI's name and strategy on the table
+
+### Improved Game Logic
+- **Flexible Hand Evaluation**: Handles any card combination (5, 6, 7+ cards) correctly
+- **Texas Hold'em Compliant Betting**: Minimum raise equals last raise amount (not just double)
+- **Smart Betting Rounds**: Won't auto-advance until all players have acted
+- **Accurate Profit/Loss**: Calculated from stack difference before/after hand
+
+### Enhanced UX
+- **Auto-Advance Mode**: Watch AI games progress at natural pace
+- **Smart Action Panel**: Raise controls dynamically enable/disable based on valid actions
+- **Complete Hand History**: See all actions, board cards, and stack changes
+- **Hand Replay**: Review any previous hand with full details
 
 ---
 
@@ -72,9 +94,11 @@ I created this project to:
 - **Full No-Limit Hold'em** implementation (2-9 players)
 - **All betting rounds**: Pre-flop, Flop, Turn, River, Showdown
 - **Complex pot management**: Main pot and unlimited side pots
-- **Accurate hand evaluation**: All 10 hand rankings from High Card to Royal Flush
+- **Accurate hand evaluation**: Handles any combination of 5+ cards (fixes AI comparison with 6-card scenarios)
 - **All player actions**: Fold, Check, Call, Bet, Raise, All-In
 - **Position-based gameplay**: Dealer button, Small Blind, Big Blind rotation
+- **Texas Hold'em compliant betting**: Minimum raise must equal the last raise amount or big blind
+- **Smart betting round logic**: Won't advance phases until all pending player actions complete
 
 ### 🤖 AI Opponents
 
@@ -90,6 +114,12 @@ I created this project to:
 - **Gemini 2.5 Flash** (Google)
 - **Grok Beta** (xAI)
 
+**Full AI Customization:**
+- **Custom names**: Give each AI a unique nickname (e.g., "Phil Bot", "Aggressive Alice")
+- **Individual strategies**: Mix different AI strategies at the same table
+- **Personality prompts**: Define how each AI should play with custom instructions
+- **Strategy display**: AI names and strategies shown on table and in hand history
+
 Each LLM agent makes contextual decisions based on:
 - Current cards and position
 - Community cards and pot odds
@@ -102,9 +132,11 @@ Each LLM agent makes contextual decisions based on:
 - **Real-time updates** with automatic state refresh
 - **Responsive design** works on desktop and tablets
 - **Smooth animations** for cards and chips
-- **Hand history panel** to review previous hands
-- **Settings panel** for game configuration and LLM API keys
-- **Watch mode** to observe AI-only games
+- **Comprehensive hand history panel** with complete action logs, board cards, and profit/loss
+- **Advanced settings panel** for game configuration, LLM API keys, and AI customization
+- **Watch mode** with auto-advance pacing for observing AI-only games
+- **Smart action controls**: Raise/Bet buttons dynamically enable/disable based on valid actions
+- **Hand replay**: Review any previous hand by hand number with full details
 
 ### 🔌 Robust Backend
 - **FastAPI framework** with async/await support
@@ -116,11 +148,14 @@ Each LLM agent makes contextual decisions based on:
 
 ### 📊 Advanced Features
 - **Game state persistence** (in-memory for MVP)
-- **Hand history tracking** with full action logs
+- **Complete hand tracking**: Every action (fold, all-in, etc.) recorded with timestamps
+- **Accurate profit/loss calculation**: Based on stack difference before/after each hand
 - **Multiple concurrent games** support
 - **Configurable blinds and stacks**
 - **API key validation** for LLM providers
 - **Health check endpoints**
+- **Auto-advance mode**: AI actions progress at natural pace in watch mode or when player inactive
+- **Betting round intelligence**: Won't auto-advance phases if players haven't acted yet
 
 ---
 
@@ -367,8 +402,11 @@ This simulator implements standard **No-Limit Texas Hold'em** rules:
 - **Side Pots**: Automatic creation when players go all-in with different stack sizes
 - **Position Rotation**: Dealer button moves clockwise after each hand
 - **Blind Posting**: Small and big blinds are automatically posted
-- **Action Validation**: Invalid actions are prevented
-- **Hand History**: Complete log of all actions taken during each hand
+- **Action Validation**: Invalid actions are prevented with smart UI controls
+- **Hand History**: Complete log of all actions with timestamps, profit/loss tracking, and hand summaries
+- **Flexible Hand Evaluation**: Correctly evaluates any combination of 5+ cards (handles edge cases)
+- **Auto-Advance Gameplay**: Watch mode or inactive players trigger gradual AI action progression
+- **Texas Hold'em Compliant Betting**: Minimum raises follow standard poker rules
 
 ---
 
