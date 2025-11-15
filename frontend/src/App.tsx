@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gameApi } from './api';
 import { GameState } from './types';
 import PokerTable from './components/PokerTable';
@@ -14,6 +14,7 @@ function App() {
   const [numAI, setNumAI] = useState(2);
   const [aiStrategy, setAiStrategy] = useState('aggressive');
   const [aiStrategies, setAiStrategies] = useState<string[]>(['aggressive', 'aggressive']);  // Individual strategy for each AI
+  const [aiNames, setAiNames] = useState<string[]>(['AI #1', 'AI #2']);
   const [aiPrompts, setAiPrompts] = useState<string[]>(['', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +22,7 @@ function App() {
   const [watchMode, setWatchMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [availableStrategies, setAvailableStrategies] = useState<string[]>(['aggressive', 'conservative', 'random']);
+  const autoAdvanceRef = useRef(false);
   
   // Load settings from localStorage
   const [settings, setSettings] = useState<GameSettings>(() => {
@@ -109,6 +111,7 @@ function App() {
         player_names: playerNames,
         ai_players: aiPlayers,
         ai_prompts: aiPromptsPayload,
+        ai_names: aiNames,
         small_blind: settings.smallBlind,
         big_blind: settings.bigBlind,
         starting_stack: settings.startingStack,
@@ -118,6 +121,7 @@ function App() {
         player_names: playerNames,
         ai_players: aiPlayers,
         ai_prompts: aiPromptsPayload,
+        ai_names: aiNames,
         small_blind: settings.smallBlind,
         big_blind: settings.bigBlind,
         starting_stack: settings.startingStack,
@@ -201,6 +205,34 @@ function App() {
       setLoading(false);
     }
   };
+
+  const autoAdvanceAI = async () => {
+    if (!gameState || autoAdvanceRef.current) return;
+    autoAdvanceRef.current = true;
+    try {
+      const updated = await gameApi.advanceAI(gameState.game_id);
+      setGameState(updated);
+    } catch (err) {
+      console.error('Auto advance failed:', err);
+    } finally {
+      autoAdvanceRef.current = false;
+    }
+  };
+
+  const currentHuman = gameState?.players.find(p => p.id === humanPlayerId);
+  const isSpectating = watchMode || !currentHuman || currentHuman.folded || currentHuman.all_in;
+
+  useEffect(() => {
+    if (!gameState || !gameStarted) return;
+    if (!isSpectating) return;
+    if (['showdown', 'complete'].includes(gameState.phase)) return;
+
+    const timer = setTimeout(() => {
+      autoAdvanceAI();
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [gameState, gameStarted, isSpectating]);
 
   const latestHandSummary =
     gameState?.hand_history && gameState.hand_history.length > 0
@@ -311,6 +343,18 @@ function App() {
                     }
                     return updated;
                   });
+                  // Adjust AI names
+                  setAiNames((prev) => {
+                    const updated = [...prev];
+                    if (newNum > updated.length) {
+                      while (updated.length < newNum) {
+                        updated.push(`AI #${updated.length + 1}`);
+                      }
+                    } else {
+                      updated.length = newNum;
+                    }
+                    return updated;
+                  });
                 }}
                 className="w-full bg-gray-700 text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-poker-primary"
               >
@@ -366,42 +410,61 @@ function App() {
                   };
 
                   return (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-gray-400 text-sm w-20">AI #{idx + 1}:</span>
-                      <div className="flex-1 space-y-2">
-                        <select
-                          value={aiStrategies[idx] || aiStrategy}
-                          onChange={(e) => {
-                            const newStrategies = [...aiStrategies];
-                            while (newStrategies.length < numAI) {
-                              newStrategies.push(aiStrategy);
-                            }
-                            newStrategies[idx] = e.target.value;
-                            setAiStrategies(newStrategies);
-                          }}
-                          className="w-full bg-gray-600 text-white rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-poker-primary"
-                        >
-                          {availableStrategies.map(strategy => (
-                            <option key={strategy} value={strategy}>
-                              {strategyLabels[strategy] || strategy}
-                            </option>
-                          ))}
-                        </select>
-                        <textarea
-                          value={aiPrompts[idx] || ''}
-                          onChange={(e) => {
-                            const newPrompts = [...aiPrompts];
-                            while (newPrompts.length < numAI) {
-                              newPrompts.push('');
-                            }
-                            newPrompts[idx] = e.target.value;
-                            setAiPrompts(newPrompts);
-                          }}
-                          rows={2}
-                          placeholder="Optional: describe how this AI should play (style, goals, etc.)"
-                          className="w-full bg-gray-600/70 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-poker-primary resize-none"
-                        />
+                    <div key={idx} className="space-y-2 bg-gray-800/40 p-3 rounded">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex-1">
+                          <label className="text-gray-300 text-xs uppercase tracking-wide">AI Name</label>
+                          <input
+                            type="text"
+                            value={aiNames[idx] !== undefined ? aiNames[idx] : `AI #${idx + 1}`}
+                            onChange={(e) => {
+                              const updated = [...aiNames];
+                              while (updated.length < numAI) {
+                                  updated.push(`AI #${updated.length + 1}`);
+                              }
+                              updated[idx] = e.target.value;
+                              setAiNames(updated);
+                            }}
+                            className="w-full mt-1 bg-gray-600 text-white rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-poker-primary"
+                            placeholder={`AI #${idx + 1}`}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-gray-300 text-xs uppercase tracking-wide">Strategy</label>
+                          <select
+                            value={aiStrategies[idx] || aiStrategy}
+                            onChange={(e) => {
+                              const newStrategies = [...aiStrategies];
+                              while (newStrategies.length < numAI) {
+                                newStrategies.push(aiStrategy);
+                              }
+                              newStrategies[idx] = e.target.value;
+                              setAiStrategies(newStrategies);
+                            }}
+                            className="w-full mt-1 bg-gray-600 text-white rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-poker-primary"
+                          >
+                            {availableStrategies.map(strategy => (
+                              <option key={strategy} value={strategy}>
+                                {strategyLabels[strategy] || strategy}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+                      <textarea
+                        value={aiPrompts[idx] || ''}
+                        onChange={(e) => {
+                          const newPrompts = [...aiPrompts];
+                          while (newPrompts.length < numAI) {
+                            newPrompts.push('');
+                          }
+                          newPrompts[idx] = e.target.value;
+                          setAiPrompts(newPrompts);
+                        }}
+                        rows={2}
+                        placeholder="Optional: describe how this AI should play (style, goals, etc.)"
+                        className="w-full bg-gray-600/70 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-poker-primary resize-none"
+                      />
                     </div>
                   );
                 })}

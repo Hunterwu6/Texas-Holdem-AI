@@ -59,6 +59,7 @@ export interface CreateGameRequest {
   player_names: string[];
   ai_players: string[];
   ai_prompts?: string[];
+  ai_names?: string[];
   small_blind: number;
   big_blind: number;
   starting_stack: number;

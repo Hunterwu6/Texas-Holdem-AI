@@ -1,6 +1,7 @@
 """Hand evaluation for poker hands"""
 from enum import IntEnum
 from typing import List, Tuple, Dict
+from itertools import combinations
 from collections import Counter
 from .deck import Card
 
@@ -25,26 +26,25 @@ class HandEvaluator:
     @staticmethod
     def evaluate(cards: List[Card]) -> Tuple[HandRank, List[int]]:
         """
-        Evaluate a poker hand (5-7 cards)
+        Evaluate a poker hand (>=5 cards)
         Returns (hand_rank, tiebreaker_values)
         """
-        if len(cards) == 7:
-            # For 7 cards, find best 5-card combination
-            return HandEvaluator._best_five_from_seven(cards)
-        elif len(cards) == 5:
+        count = len(cards)
+        if count < 5:
+            raise ValueError(f"Must evaluate at least 5 cards, got {count}")
+        if count == 5:
             return HandEvaluator._evaluate_five(cards)
-        else:
-            raise ValueError(f"Must evaluate 5 or 7 cards, got {len(cards)}")
+        return HandEvaluator._best_five_from_any(cards)
     
     @staticmethod
-    def _best_five_from_seven(cards: List[Card]) -> Tuple[HandRank, List[int]]:
-        """Find the best 5-card hand from 7 cards"""
+    def _best_five_from_any(cards: List[Card]) -> Tuple[HandRank, List[int]]:
+        """Find the best 5-card hand from N cards (N >= 6)"""
         from itertools import combinations
         
         best_rank = HandRank.HIGH_CARD
         best_tiebreaker = []
         
-        # Check all 21 combinations of 5 cards from 7
+        # Check all combinations of 5 cards
         for five_cards in combinations(cards, 5):
             rank, tiebreaker = HandEvaluator._evaluate_five(list(five_cards))
             if rank > best_rank or (rank == best_rank and tiebreaker > best_tiebreaker):

@@ -348,7 +348,8 @@ class GameEngine:
         elif action == PlayerAction.RAISE:
             if self.current_bet == 0:
                 raise ValueError("Cannot raise, there is no bet to raise")
-            min_target = self.current_bet + self.big_blind
+            last_bet = self.current_bet - max(player.current_bet, 0)
+            min_target = self.current_bet + max(self.big_blind, last_bet)
             desired_total = max(amount, min_target)
             additional_needed = desired_total - player.current_bet
             if additional_needed <= 0:
@@ -405,12 +406,6 @@ class GameEngine:
     
     def _is_betting_round_complete(self) -> bool:
         """Check if current betting round is complete"""
-        active_players = [p for p in self.players if p.can_act()]
-        
-        # If only one player left, round is complete
-        if len(active_players) <= 1:
-            return True
-        
         return len(self.pending_actions) == 0
     
     def _check_for_immediate_win(self) -> bool:
@@ -566,8 +561,9 @@ class GameEngine:
 
         # Update player stacks after recording summary
         for player in self.players:
-            if player.id in winnings:
-                player.stack += winnings[player.id]
+            amount_won = winnings.get(player.id, 0)
+            if amount_won:
+                player.stack += amount_won
             player.total_bet = 0
             player.current_bet = 0
         
@@ -581,8 +577,10 @@ class GameEngine:
             rank_desc = ""
             if player.id in player_hands:
                 rank_desc = HandEvaluator.hand_description(*player_hands[player.id])
-            starting_stack = self.hand_starting_stacks.get(player.id, player.stack)
-            ending_stack = player.stack + winnings.get(player.id, 0)
+            starting_stack = self.hand_starting_stacks.get(player.id, player.stack + player.total_bet)
+            invested = player.total_bet
+            amount_won = winnings.get(player.id, 0)
+            ending_stack = starting_stack - invested + amount_won
             result = ending_stack - starting_stack
             players_summary.append({
                 "player_id": player.id,
@@ -592,7 +590,7 @@ class GameEngine:
                 "result": result,
                 "stack_start": starting_stack,
                 "stack_end": ending_stack,
-                "total_bet": player.total_bet
+                "total_bet": invested
             })
         
         winners_summary = [

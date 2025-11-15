@@ -49,6 +49,14 @@ def load_llm_config():
 
 load_llm_config()
 
+
+def _has_active_human(engine: GameEngine) -> bool:
+    """Check if any human player can still act"""
+    return any(
+        (not player.id.startswith("ai_")) and player.can_act()
+        for player in engine.players
+    )
+
 # Initialize AI strategies
 ai_strategies = {
     "aggressive": AggressiveStrategy(),
@@ -81,6 +89,7 @@ class CreateGameRequest(BaseModel):
     player_names: List[str]
     ai_players: List[str] = []  # AI strategy names
     ai_prompts: Optional[List[str]] = None
+    ai_names: Optional[List[str]] = None
     small_blind: int = 5
     big_blind: int = 10
     starting_stack: int = 1000
@@ -153,6 +162,7 @@ async def create_game(request: CreateGameRequest):
             print(f"[API] Added human player: {name} ({player_id})")
         
         ai_prompts = request.ai_prompts or []
+        ai_names = request.ai_names or []
         game_prompts: Dict[str, str] = {}
         
         # Add AI players
@@ -161,8 +171,13 @@ async def create_game(request: CreateGameRequest):
                 print(f"[API] ERROR: Unknown AI strategy: {ai_strategy}")
                 raise HTTPException(400, f"Unknown AI strategy: {ai_strategy}")
             player_id = f"ai_{ai_strategy}_{uuid.uuid4().hex[:8]}"
-            all_players.append((player_id, f"AI-{ai_strategy.title()}"))
-            print(f"[API] Added AI player: {ai_strategy} ({player_id})")
+            ai_name = f"AI-{ai_strategy.title()}"
+            if idx < len(ai_names):
+                name_override = ai_names[idx].strip()
+                if name_override:
+                    ai_name = name_override
+            all_players.append((player_id, ai_name))
+            print(f"[API] Added AI player: {ai_strategy} ({player_id}) as {ai_name}")
             prompt = ""
             if idx < len(ai_prompts):
                 prompt = ai_prompts[idx].strip()
@@ -224,8 +239,11 @@ async def start_hand(game_id: str):
     try:
         state = engine.start_hand()
         
-        # Process AI actions if current player is AI
-        state = await _process_ai_turns(engine)
+        # Only auto-run AI if at least one human is still active
+        if _has_active_human(engine):
+            state = await _process_ai_turns(engine)
+        else:
+            state = engine.get_state()
         
         return GameResponse(**state.to_dict())
     
@@ -267,7 +285,10 @@ async def player_action(game_id: str, request: PlayerActionRequest):
         
         # Process AI turns until it's human's turn again (within same betting round)
         # This allows AI to act but stops before advancing to next phase
-        state = await _process_ai_turns_until_human(engine)
+        if _has_active_human(engine):
+            state = await _process_ai_turns_until_human(engine)
+        else:
+            state = engine.get_state()
         
         return GameResponse(**state.to_dict())
     

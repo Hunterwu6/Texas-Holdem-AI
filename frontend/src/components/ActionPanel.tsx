@@ -28,22 +28,25 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   
   if (!humanPlayer) return null;
 
-  const callAmount = gameState.current_bet - humanPlayer.current_bet;
-  const minRaise = Math.max(
-    gameState.big_blind,
-    gameState.current_bet === 0 ? gameState.big_blind : gameState.current_bet * 2
-  );
+  const callAmount = Math.max(0, gameState.current_bet - humanPlayer.current_bet);
   const maxRaise = humanPlayer.stack;
   const isOpenBetting = gameState.current_bet === 0;
+  const lastBet = Math.max(gameState.big_blind, gameState.current_bet);
+  const minRaise = Math.max(gameState.big_blind, isOpenBetting ? gameState.big_blind : gameState.current_bet + lastBet);
+  const remainingAfterCall = Math.max(0, humanPlayer.stack - callAmount);
+
+  // Check if hand is over
+  const isHandOver = gameState.phase === 'showdown' || gameState.phase === 'complete';
+  const canRaise = canAct && !isHandOver && (isOpenBetting ? humanPlayer.stack > 0 : remainingAfterCall > 0);
 
   const handleRaise = () => {
-    const amount = Math.min(Math.max(raiseAmount, minRaise), maxRaise);
+    if (!canRaise) return;
+    const minAllowed = isOpenBetting ? gameState.big_blind : Math.min(minRaise, humanPlayer.current_bet + callAmount + remainingAfterCall);
+    const amount = Math.min(Math.max(raiseAmount, minAllowed), maxRaise);
     const actionType = isOpenBetting ? 'bet' : 'raise';
     onAction(actionType, amount);
   };
 
-  // Check if hand is over
-  const isHandOver = gameState.phase === 'showdown' || gameState.phase === 'complete';
   const playersWithChips = gameState.players.filter(p => p.stack > 0).length;
   const canContinue = playersWithChips >= 2;
 
@@ -129,15 +132,15 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
               type="number"
               value={raiseAmount}
               onChange={(e) => setRaiseAmount(Number(e.target.value))}
-              min={minRaise}
+              min={Math.min(minRaise, maxRaise)}
               max={maxRaise}
               step={gameState.big_blind}
-              disabled={!canAct}
+              disabled={!canRaise}
               className="flex-1 bg-gray-700 text-white rounded px-3 py-2 font-mono disabled:opacity-50"
             />
             <button
               onClick={handleRaise}
-              disabled={!canAct || humanPlayer.stack < Math.min(minRaise, maxRaise)}
+              disabled={!canRaise}
               className="btn-primary whitespace-nowrap"
             >
               {isOpenBetting ? 'Bet' : 'Raise'}
@@ -148,21 +151,21 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => setRaiseAmount(Math.floor(gameState.pot / 2))}
-              disabled={!canAct}
+              disabled={!canRaise}
               className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-sm disabled:opacity-50"
             >
               1/2 Pot
             </button>
             <button
               onClick={() => setRaiseAmount(gameState.pot)}
-              disabled={!canAct}
+              disabled={!canRaise}
               className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-sm disabled:opacity-50"
             >
               Pot
             </button>
             <button
               onClick={() => setRaiseAmount(humanPlayer.stack)}
-              disabled={!canAct}
+              disabled={!canRaise}
               className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-sm disabled:opacity-50"
             >
               All-In
